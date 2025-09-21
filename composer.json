@@ -1,0 +1,16 @@
+{
+  "name": "houdaslassi/queue-monitor",
+  "description": "Laravel queue job monitoring (failures + quick retries) without heavy setup.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "houdaslassi\\QueueMonitor\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "houdaslassi\\QueueMonitor\\Tests\\": "tests/"
+    }
+  }
+}
