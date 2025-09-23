@@ -12,5 +12,26 @@
     "psr-4": {
       "houdaslassi\\QueueMonitor\\Tests\\": "tests/"
     }
+  },
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^10.0|^11.0",
+    "illuminate/queue": "^10.0|^11.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^8.0|^9.0",
+    "pestphp/pest": "^3.0",
+    "pestphp/pest-plugin-laravel": "^2.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "houdaslassi\\QueueMonitor\\QueueMonitorServiceProvider"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "pest -p",
+    "lint": "php -l src"
   }
 }
