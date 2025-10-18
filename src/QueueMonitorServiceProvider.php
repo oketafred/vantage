@@ -27,8 +27,6 @@ class QueueMonitorServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 Console\Commands\RetryFailedJob::class,
-                Console\Commands\ListJobs::class,
-                Console\Commands\TagStats::class,
                 Console\Commands\CleanupStuckJobs::class,
             ]);
         }
