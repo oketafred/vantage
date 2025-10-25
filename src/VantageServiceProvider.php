@@ -21,15 +21,15 @@ class VantageServiceProvider extends ServiceProvider
     {
         // publish the config file
         $this->publishes([
-            __DIR__.'/../config/queue-monitor.php' => config_path('queue-monitor.php'),
-        ], 'queue-monitor-config');
+            __DIR__.'/../config/vantage.php' => config_path('vantage.php'),
+        ], 'vantage-config');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
                 Console\Commands\RetryFailedJob::class,
                 Console\Commands\CleanupStuckJobs::class,
-                Console\Commands\ListJobs::class,
-                Console\Commands\TagStats::class,
+                //Console\Commands\ListJobs::class,
+                //Console\Commands\TagStats::class,
             ]);
         }
 

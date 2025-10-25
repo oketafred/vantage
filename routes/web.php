@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use houdaslassi\QueueMonitor\Http\Controllers\QueueMonitorController;
+use houdaslassi\Vantage\Http\Controllers\QueueMonitorController;
 
 Route::prefix('vantage')->name('vantage.')->group(function () {
     Route::get('/', [QueueMonitorController::class, 'index'])->name('dashboard');
