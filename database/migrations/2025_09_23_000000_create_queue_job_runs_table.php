@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->string('connection')->nullable()->index();
             $table->unsignedInteger('attempt')->default(0);
             $table->unsignedInteger('retries')->default(0);
-            $table->unsignedBigInteger('retried_from_id')->nullable();
+            $table->unsignedBigInteger('retried_from_id')->nullable()->references('id')->on('queue_job_runs')->nullOnDelete();
             $table->enum('status', ['processing','processed','failed'])->index();
 
             // extra details for observability
@@ -29,11 +29,6 @@ return new class extends Migration {
             $table->timestamp('started_at')->nullable()->index();
             $table->timestamp('finished_at')->nullable()->index();
             $table->timestamps();
-            // Foreign key for retry tracking
-            $table->foreign('retried_from_id')
-                ->references('id')
-                ->on('queue_job_runs')
-                ->nullOnDelete();
         });
     }
 
