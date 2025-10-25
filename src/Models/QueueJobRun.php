@@ -14,6 +14,7 @@ class QueueJobRun extends Model
         'started_at'  => 'datetime',
         'finished_at' => 'datetime',
         'job_tags'    => 'array',
+        'payload'     => 'array',
     ];
 
     /**
