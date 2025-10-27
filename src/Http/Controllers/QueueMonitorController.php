@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class QueueMonitorController extends Controller
 {
@@ -114,6 +115,15 @@ class QueueMonitorController extends Controller
             ->take(10)
             ->values();
 
+        // Recent batches (if batch table exists)
+        $recentBatches = collect();
+        if (Schema::hasTable('job_batches')) {
+            $recentBatches = DB::table('job_batches')
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+        }
+
         return view('vantage::dashboard', compact(
             'stats',
             'recentJobs',
@@ -123,6 +133,7 @@ class QueueMonitorController extends Controller
             'topExceptions',
             'slowestJobs',
             'topTags',
+            'recentBatches',
             'period'
         ));
     }

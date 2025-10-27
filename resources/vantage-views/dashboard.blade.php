@@ -231,6 +231,47 @@
     </div>
 </div>
 
+<!-- Recent Batches -->
+@if($recentBatches->isNotEmpty())
+<div class="bg-white shadow rounded-lg mb-8">
+    <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">📦 Recent Batches</h3>
+        <div class="space-y-3">
+            @foreach($recentBatches as $batch)
+                <div class="border rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-900">{{ $batch->name ?? 'Unnamed Batch' }}</span>
+                        @if($batch->cancelled_at)
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Cancelled</span>
+                        @elseif($batch->finished_at)
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
+                        @else
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Running</span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-4 text-sm text-gray-600">
+                        <span>{{ $batch->total_jobs }} jobs</span>
+                        @if($batch->failed_jobs > 0)
+                            <span class="text-red-600">{{ $batch->failed_jobs }} failed</span>
+                        @endif
+                        @php
+                            $progress = $batch->total_jobs > 0 
+                                ? round((($batch->total_jobs - $batch->pending_jobs) / $batch->total_jobs) * 100) 
+                                : 0;
+                        @endphp
+                        <span class="text-gray-400">•</span>
+                        <span>{{ $progress }}% complete</span>
+                    </div>
+                    <div class="mt-2 bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $progress }}%"></div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Recent Jobs -->
 <div class="bg-white shadow rounded-lg">
     <div class="px-4 py-5 sm:p-6">

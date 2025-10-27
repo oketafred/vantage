@@ -2,16 +2,18 @@
 
 namespace houdaslassi\Vantage\Support;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Simple Payload Extractor
- * 
+ *
  * Extracts job data for storage - keeps it simple and safe.
  */
 class PayloadExtractor
 {
     /**
      * Extract job payload as JSON string for storage
-     * 
+     *
      * Gets COMPLETE payload from Laravel's queue - everything!
      */
     public static function getPayload($event): ?string
@@ -23,15 +25,15 @@ class PayloadExtractor
         try {
             // Get the COMPLETE raw payload from Laravel's queue
             $rawPayload = $event->job->payload();
-            
+
             // Convert the command object to readable format
             $command = self::getCommand($event);
             $commandData = [];
-            
+
             if ($command) {
                 $commandData = self::extractData($command);
             }
-            
+
             // Combine everything
             $fullData = [
                 'raw_payload' => $rawPayload, // Complete Laravel queue payload
@@ -45,7 +47,7 @@ class PayloadExtractor
                     'attempts' => $event->job->attempts(),
                 ],
             ];
-            
+
             $fullData = self::redactSensitive($fullData);
 
             // Debug: Log what we're extracting
@@ -91,7 +93,7 @@ class PayloadExtractor
 
     /**
      * Extract data from command object
-     * 
+     *
      * Gets ALL properties (public, protected, private) from the job.
      * Saves EVERYTHING - no filtering!
      */
@@ -101,7 +103,7 @@ class PayloadExtractor
 
         try {
             $reflection = new \ReflectionClass($command);
-            
+
             // Get ALL properties (public, protected, private) - NO FILTERING!
             foreach ($reflection->getProperties() as $property) {
                 $property->setAccessible(true);
@@ -121,7 +123,7 @@ class PayloadExtractor
 
     /**
      * Convert value to JSON-safe format
-     * 
+     *
      * Handles scalars, arrays, objects, models safely.
      */
     protected static function convertValue($value)
@@ -142,7 +144,7 @@ class PayloadExtractor
                 'model' => get_class($value),
                 'id' => $value->getKey(),
             ];
-            
+
             // Try to get some attributes for context
             try {
                 $attributes = $value->getAttributes();
@@ -156,7 +158,7 @@ class PayloadExtractor
             } catch (\Throwable $e) {
                 // Ignore attribute access errors
             }
-            
+
             return $modelData;
         }
 
@@ -181,15 +183,15 @@ class PayloadExtractor
         // Other objects - try to get some properties
         if (is_object($value)) {
             $objectData = ['class' => get_class($value)];
-            
+
             try {
                 $reflection = new \ReflectionClass($value);
                 $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
-                
+
                 foreach ($properties as $property) {
                     $propName = $property->getName();
                     $propValue = $property->getValue($value);
-                    
+
                     // Only include simple properties to avoid recursion
                     if (is_null($propValue) || is_scalar($propValue)) {
                         $objectData[$propName] = $propValue;
@@ -198,7 +200,7 @@ class PayloadExtractor
             } catch (\Throwable $e) {
                 // Ignore reflection errors
             }
-            
+
             return $objectData;
         }
 
@@ -207,7 +209,7 @@ class PayloadExtractor
 
     /**
      * Redact sensitive keys from data
-     * 
+     *
      * Removes passwords, tokens, secrets, etc.
      */
     protected static function redactSensitive(array $data): array
@@ -220,7 +222,7 @@ class PayloadExtractor
             // Check if key is sensitive
             if (in_array(strtolower($key), array_map('strtolower', $sensitiveKeys))) {
                 $data[$key] = '[REDACTED]';
-            } 
+            }
             // Recursively check nested arrays
             elseif (is_array($value)) {
                 $data[$key] = self::redactSensitive($value);
