@@ -7,7 +7,9 @@ use houdaslassi\Vantage\Support\TagExtractor;
 use houdaslassi\Vantage\Support\PayloadExtractor;
 use Illuminate\Queue\Events\JobProcessed;
 use houdaslassi\Vantage\Models\QueueJobRun;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class RecordJobSuccess
 {
@@ -41,10 +43,11 @@ class RecordJobSuccess
             $row->status = 'processed';
             $row->finished_at = now();
             if ($row->started_at) {
-                $row->duration_ms = $row->finished_at->diffInMilliseconds($row->started_at);
+                $duration = $row->finished_at->diffInRealMilliseconds($row->started_at, true);
+                $row->duration_ms = max(0, (int) $duration);
             }
             $row->save();
-            
+
             Log::debug('Queue Monitor: Job completed', [
                 'id' => $row->id,
                 'job_class' => $jobClass,
@@ -56,7 +59,7 @@ class RecordJobSuccess
                 'job_class' => $jobClass,
                 'uuid' => $uuid,
             ]);
-            
+
                 QueueJobRun::create([
                     'uuid' => $uuid,
                     'job_class' => $jobClass,
@@ -70,5 +73,31 @@ class RecordJobSuccess
                     'job_tags' => TagExtractor::extract($event),
                 ]);
         }
+    }
+
+    protected function bestUuid(JobProcessed $event): string
+    {
+        // Try Laravel's built-in UUID
+        if (method_exists($event->job, 'uuid') && $event->job->uuid()) {
+            return (string) $event->job->uuid();
+        }
+
+        // Fallback to job ID
+        if (method_exists($event->job, 'getJobId') && $event->job->getJobId()) {
+            return (string) $event->job->getJobId();
+        }
+
+        // Last resort: generate new UUID
+        return (string) \Illuminate\Support\Str::uuid();
+    }
+
+
+    protected function jobClass(JobProcessed $event): string
+    {
+        if (method_exists($event->job, 'resolveName')) {
+            return $event->job->resolveName();
+        }
+
+        return get_class($event->job);
     }
 }
