@@ -147,7 +147,10 @@
     <!-- Sidebar -->
     <div class="space-y-6">
         <!-- Retry Chain -->
-        @if(!empty($retryChain) || $job->retries->isNotEmpty())
+        @php
+            $retries = $job->retries()->get();
+        @endphp
+        @if(!empty($retryChain) || $retries->isNotEmpty())
             <div class="bg-white shadow rounded-lg p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">🔄 Retry Chain</h3>
                 
@@ -166,10 +169,10 @@
                     </div>
                 @endif
 
-                @if($job->retries->isNotEmpty())
+                @if($retries->isNotEmpty())
                     <div>
                         <p class="text-sm text-gray-500 mb-2">Retried As:</p>
-                        @foreach($job->retries as $retry)
+                        @foreach($retries as $retry)
                             <a href="{{ route('vantage.jobs.show', $retry->id) }}" 
                                class="block text-sm text-indigo-600 hover:text-indigo-800 mb-1">
                                 #{{ $retry->id }} - {{ $retry->status }} ({{ $retry->created_at->diffForHumans() }})
