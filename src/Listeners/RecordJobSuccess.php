@@ -5,6 +5,7 @@ namespace houdaslassi\Vantage\Listeners;
 use houdaslassi\Vantage\Support\Traits\ExtractsRetryOf;
 use houdaslassi\Vantage\Support\TagExtractor;
 use houdaslassi\Vantage\Support\PayloadExtractor;
+use houdaslassi\Vantage\Support\JobPerformanceContext;
 use Illuminate\Queue\Events\JobProcessed;
 use houdaslassi\Vantage\Models\QueueJobRun;
 use Illuminate\Queue\Events\JobProcessing;
@@ -39,6 +40,32 @@ class RecordJobSuccess
         }
 
         if ($row) {
+            // Capture end metrics
+            $telemetryEnabled = config('vantage.telemetry.enabled', true);
+            $captureCpu = config('vantage.telemetry.capture_cpu', true);
+
+            $memoryEnd = null;
+            $memoryPeakEnd = null;
+            $cpuDelta = ['user_ms' => null, 'sys_ms' => null];
+
+            if ($telemetryEnabled) {
+                $memoryEnd = @memory_get_usage(true) ?: null;
+                $memoryPeakEnd = @memory_get_peak_usage(true) ?: null;
+
+                if ($captureCpu && function_exists('getrusage')) {
+                    $ru = @getrusage();
+                    if (is_array($ru)) {
+                        $userUs = ($ru['ru_utime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_utime.tv_usec'] ?? 0);
+                        $sysUs  = ($ru['ru_stime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_stime.tv_usec'] ?? 0);
+                        $baseline = JobPerformanceContext::getBaseline($uuid);
+                        if ($baseline) {
+                            $cpuDelta['user_ms'] = max(0, (int) round(($userUs - ($baseline['cpu_start_user_us'] ?? 0)) / 1000));
+                            $cpuDelta['sys_ms']  = max(0, (int) round(($sysUs  - ($baseline['cpu_start_sys_us'] ?? 0)) / 1000));
+                        }
+                    }
+                }
+            }
+
             // Update existing record
             $row->status = 'processed';
             $row->finished_at = now();
@@ -46,7 +73,22 @@ class RecordJobSuccess
                 $duration = $row->finished_at->diffInRealMilliseconds($row->started_at, true);
                 $row->duration_ms = max(0, (int) $duration);
             }
+
+            // Memory updates
+            $row->memory_end_bytes = $memoryEnd;
+            $row->memory_peak_end_bytes = $memoryPeakEnd;
+            if ($row->memory_peak_start_bytes !== null && $memoryPeakEnd !== null) {
+                $row->memory_peak_delta_bytes = max(0, (int) ($memoryPeakEnd - $row->memory_peak_start_bytes));
+            }
+
+            // CPU deltas
+            $row->cpu_user_ms = $cpuDelta['user_ms'];
+            $row->cpu_sys_ms = $cpuDelta['sys_ms'];
+
             $row->save();
+
+            // Clear baseline
+            JobPerformanceContext::clearBaseline($uuid);
 
             Log::debug('Queue Monitor: Job completed', [
                 'id' => $row->id,
