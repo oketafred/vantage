@@ -6,6 +6,7 @@ use houdaslassi\Vantage\Notifications\JobFailedNotification;
 use houdaslassi\Vantage\Support\Traits\ExtractsRetryOf;
 use houdaslassi\Vantage\Support\TagExtractor;
 use houdaslassi\Vantage\Support\PayloadExtractor;
+use houdaslassi\Vantage\Support\JobPerformanceContext;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Queue\Events\JobFailed;
@@ -18,6 +19,35 @@ class RecordJobFailure
 
     public function handle(JobFailed $event): void
     {
+        $telemetryEnabled = config('vantage.telemetry.enabled', true);
+        $captureCpu = config('vantage.telemetry.capture_cpu', true);
+
+        $memoryEnd = null;
+        $memoryPeakEnd = null;
+        $cpuDelta = ['user_ms' => null, 'sys_ms' => null];
+
+        if ($telemetryEnabled) {
+            $memoryEnd = @memory_get_usage(true) ?: null;
+            $memoryPeakEnd = @memory_get_peak_usage(true) ?: null;
+
+            if ($captureCpu && function_exists('getrusage')) {
+                $ru = @getrusage();
+                if (is_array($ru)) {
+                    $userUs = ($ru['ru_utime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_utime.tv_usec'] ?? 0);
+                    $sysUs  = ($ru['ru_stime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_stime.tv_usec'] ?? 0);
+                    // We don't have UUID here reliably; try to fetch baseline via job's uuid if available
+                    $uuid = method_exists($event->job, 'uuid') && $event->job->uuid() ? (string) $event->job->uuid() : null;
+                    if ($uuid) {
+                        $baseline = JobPerformanceContext::getBaseline($uuid);
+                        if ($baseline) {
+                            $cpuDelta['user_ms'] = max(0, (int) round(($userUs - ($baseline['cpu_start_user_us'] ?? 0)) / 1000));
+                            $cpuDelta['sys_ms']  = max(0, (int) round(($sysUs  - ($baseline['cpu_start_sys_us'] ?? 0)) / 1000));
+                        }
+                    }
+                }
+            }
+        }
+
         $row = QueueJobRun::create([
             'uuid'             => (string) Str::uuid(),
             'job_class'        => method_exists($event->job, 'resolveName')
@@ -34,6 +64,11 @@ class RecordJobFailure
             'retried_from_id'  => $this->getRetryOf($event),
             'payload'          => PayloadExtractor::getPayload($event),
             'job_tags'         => TagExtractor::extract($event),
+            // telemetry end metrics
+            'memory_end_bytes' => $memoryEnd,
+            'memory_peak_end_bytes' => $memoryPeakEnd,
+            'cpu_user_ms' => $cpuDelta['user_ms'],
+            'cpu_sys_ms' => $cpuDelta['sys_ms'],
         ]);
 
         Log::info('Queue Monitor: Job failed', [

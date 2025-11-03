@@ -5,6 +5,7 @@ namespace houdaslassi\Vantage\Listeners;
 use houdaslassi\Vantage\Support\Traits\ExtractsRetryOf;
 use houdaslassi\Vantage\Support\TagExtractor;
 use houdaslassi\Vantage\Support\PayloadExtractor;
+use houdaslassi\Vantage\Support\JobPerformanceContext;
 use Illuminate\Queue\Events\JobProcessing;
 use houdaslassi\Vantage\Models\QueueJobRun;
 
@@ -14,8 +15,43 @@ class RecordJobStart
 
     public function handle(JobProcessing $event): void
     {
+        $uuid = $this->bestUuid($event);
+
+        // Telemetry config & sampling
+        $telemetryEnabled = config('vantage.telemetry.enabled', true);
+        $sampleRate = (float) config('vantage.telemetry.sample_rate', 1.0);
+        $captureCpu = config('vantage.telemetry.capture_cpu', true);
+
+        $memoryStart = null;
+        $memoryPeakStart = null;
+        $cpuStart = null;
+
+        if ($telemetryEnabled && (mt_rand() / mt_getrandmax()) <= $sampleRate) {
+            $memoryStart = @memory_get_usage(true) ?: null;
+            $memoryPeakStart = @memory_get_peak_usage(true) ?: null;
+
+            if ($captureCpu && function_exists('getrusage')) {
+                $ru = @getrusage();
+                if (is_array($ru)) {
+                    $userUs = ($ru['ru_utime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_utime.tv_usec'] ?? 0);
+                    $sysUs  = ($ru['ru_stime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_stime.tv_usec'] ?? 0);
+                    $cpuStart = ['user_us' => $userUs, 'sys_us' => $sysUs];
+                }
+            }
+
+            // keep CPU baseline in memory only
+            if ($cpuStart) {
+                JobPerformanceContext::setBaseline($uuid, [
+                    'cpu_start_user_us' => $cpuStart['user_us'],
+                    'cpu_start_sys_us' => $cpuStart['sys_us'],
+                ]);
+            }
+        }
+
+        $payloadJson = PayloadExtractor::getPayload($event);
+
         QueueJobRun::create([
-            'uuid'             => $this->bestUuid($event),
+            'uuid'             => $uuid,
             'job_class'        => $this->jobClass($event),
             'queue'            => $event->job->getQueue(),
             'connection'       => $event->connectionName ?? null,
@@ -23,8 +59,11 @@ class RecordJobStart
             'status'           => 'processing',
             'started_at'       => now(),
             'retried_from_id'  => $this->getRetryOf($event),
-            'payload'          => PayloadExtractor::getPayload($event),
+            'payload'          => $payloadJson,
             'job_tags'         => TagExtractor::extract($event),
+            // telemetry columns (nullable if disabled/unsampled)
+            'memory_start_bytes' => $memoryStart,
+            'memory_peak_start_bytes' => $memoryPeakStart,
         ]);
     }
 
