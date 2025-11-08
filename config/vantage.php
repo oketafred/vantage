@@ -106,4 +106,16 @@ return [
         'sample_rate' => (float) env('VANTAGE_TELEMETRY_SAMPLE_RATE', 1.0), // 0.0 - 1.0
         'capture_cpu' => env('VANTAGE_TELEMETRY_CPU', true),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Database Connection
+    |--------------------------------------------------------------------------
+    |
+    | Specify which database connection to use for storing queue job runs.
+    | This is useful when your application uses multiple databases.
+    | Set to null to use the default database connection.
+    |
+    */
+    'database_connection' => env('VANTAGE_DATABASE_CONNECTION', null),
 ];
