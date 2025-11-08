@@ -52,30 +52,31 @@ class QueueMonitorController extends Controller
             ->pluck('count', 'status');
 
         // Jobs by hour (for trend chart)
-        // Use database-agnostic approach
-        $dbDriver = DB::getDriverName();
-        if ($dbDriver === 'mysql' || $dbDriver === 'mariadb') {
-            $jobsByHour = QueueJobRun::select(
-                    DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as hour'),
-                    DB::raw('count(*) as count'),
-                    DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed_count')
-                )
-                ->where('created_at', '>', $since)
-                ->groupBy('hour')
-                ->orderBy('hour')
-                ->get();
+        // Use database-agnostic date formatting
+        $connectionName = (new QueueJobRun)->getConnectionName();
+        $connection = DB::connection($connectionName);
+        $driver = $connection->getDriverName();
+        
+        if ($driver === 'mysql') {
+            $dateFormat = DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as hour');
+        } elseif ($driver === 'sqlite') {
+            $dateFormat = DB::raw('strftime("%Y-%m-%d %H:00:00", created_at) as hour');
+        } elseif ($driver === 'pgsql') {
+            $dateFormat = DB::raw("to_char(created_at, 'YYYY-MM-DD HH24:00:00') as hour");
         } else {
-            // SQLite and PostgreSQL compatible
-            $jobsByHour = QueueJobRun::select(
-                    DB::raw("strftime('%Y-%m-%d %H:00:00', created_at) as hour"),
-                    DB::raw('count(*) as count'),
-                    DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed_count')
-                )
-                ->where('created_at', '>', $since)
-                ->groupBy('hour')
-                ->orderBy('hour')
-                ->get();
+            // Fallback for other databases
+            $dateFormat = DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as hour');
         }
+        
+        $jobsByHour = QueueJobRun::select(
+                $dateFormat,
+                DB::raw('count(*) as count'),
+                DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed_count')
+            )
+            ->where('created_at', '>', $since)
+            ->groupBy('hour')
+            ->orderBy('hour')
+            ->get();
 
         // Top failing jobs
         $topFailingJobs = QueueJobRun::select('job_class', DB::raw('count(*) as failure_count'))
