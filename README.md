@@ -33,27 +33,55 @@ Every job gets tracked in the `queue_job_runs` table with:
 
 When jobs fail, we store the exception class, message, and full stack trace. Much easier to debug than Laravel's default failed_jobs table.
 
+Visit `/vantage/failed` to see all failed jobs with exception details and retry options.
+
 ![Failed Jobs](screenshots/vantage_04.png)
+
+![Failed Jobs List](screenshots/vantage_05.png)
 
 ### Web Interface
 
-Visit `/vantage` to see:
-- Dashboard with stats and charts
-- List of all jobs with filtering (by status, queue, tags, etc.)
-- Individual job details
-- Failed jobs page
-- Tag statistics and filtering
-- Recent batches tracking
+Visit `/vantage` to access the comprehensive monitoring dashboard:
+
+**Dashboard** (`/vantage`) - Overview of your queue system:
+- **Statistics Cards**: Total jobs, processed, failed, processing, and success rate
+- **Queue Depth Monitoring**: Real-time pending job counts per queue with health status
+- **Success Rate Trend Chart**: Visual representation of job success/failure over time
+- **Top Failing Jobs**: See which job classes fail most often
+- **Top Exceptions**: Most common error types with counts
+- **Recent Jobs Table**: Latest 20 jobs with quick actions
+- **Recent Batches**: Track Laravel job batches with success/failure rates
+- **Time Period Filters**: View data for last hour, 6 hours, 24 hours, 7 days, 30 days, or all time
 
 ![Dashboard](screenshots/vantage_01.png)
 
 ![Recent Batches](screenshots/vantage_03.png)
 
-**Jobs List** - View and filter all jobs:
+**Jobs List** - View and filter all jobs with advanced filtering options:
+
+Visit `/vantage/jobs` to access the jobs list with powerful filtering capabilities:
+- Filter by status (processed, failed, processing)
+- Filter by queue name
+- Filter by job class (partial match supported)
+- Filter by tags (supports multiple tags with "all" or "any" mode)
+- Filter by date range
+- Popular tags cloud for quick filtering
+- Pagination (50 jobs per page)
 
 ![Jobs List](screenshots/vantage_02.png)
 
-**Job Details** - See full job information with exception details and retry history.
+Filter jobs by status, queue, job class, tags, and date range:
+
+![Jobs List with Filters](screenshots/vantage_08.png)
+
+**Job Details** (`/vantage/jobs/{id}`) - Comprehensive job information:
+- **Basic Information**: Status, UUID, queue, connection, job class
+- **Timing**: Start time, finish time, duration
+- **Exception Details**: Full exception class, message, and stack trace for failed jobs
+- **Payload**: Complete job payload with JSON formatting
+- **Tags**: All tags associated with the job
+- **Retry Chain**: View original job and all retry attempts
+- **Quick Actions**: Retry failed jobs directly from the details page
 
 **Note:** The dashboard requires authentication by default. Make sure you're logged in or customize the `viewVantage` gate as described in the Configuration section.
 
@@ -187,8 +215,33 @@ composer test
 
 ## Commands
 
-- `vantage:retry {id}` - Retry a failed job
-- `vantage:cleanup-stuck` - Clean up jobs stuck in processing state
+### Retry Failed Job
+
+```bash
+php artisan vantage:retry {job_id}
+```
+
+Retry a failed job by its ID. The job will be re-queued with the same payload and settings.
+
+### Cleanup Stuck Jobs
+
+```bash
+php artisan vantage:cleanup-stuck [--timeout=1] [--dry-run]
+```
+
+Clean up jobs that are stuck in "processing" state. Useful for jobs that were interrupted or crashed.
+
+- `--timeout=1` - Hours to consider a job stuck (default: 1 hour)
+- `--dry-run` - Show what would be cleaned without actually cleaning
+
+Example:
+```bash
+# Clean up jobs stuck for more than 2 hours
+php artisan vantage:cleanup-stuck --timeout=2
+
+# Preview what would be cleaned
+php artisan vantage:cleanup-stuck --dry-run
+```
 
 ## Environment Variables
 
