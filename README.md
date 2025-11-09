@@ -1,16 +1,18 @@
 # Vantage
 
-A Laravel package that tracks and monitors your queue jobs.
-Automatically records job execution history, failures, retries,
+A Laravel package that tracks and monitors your queue jobs. 
+Automatically records job execution history, failures, retries, 
 and provides a simple web interface to view everything.
 
 ## Installation
 
 ```bash
 composer require houdaslassi/vantage
+php artisan vendor:publish --tag=vantage-config
+php artisan migrate
 ```
 
-The package will automatically register itself and run migrations.
+The package will automatically register itself. Publish the config file to customize settings.
 
 ### Requirements
 
@@ -149,7 +151,7 @@ Telemetry can be configured via environment variables (see Environment Variables
 
 ## Configuration
 
-Publish the config file:
+The config file should already be published during installation. If you need to republish it:
 
 ```bash
 php artisan vendor:publish --tag=vantage-config
