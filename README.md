@@ -98,8 +98,6 @@ Vantage automatically tracks performance metrics for your jobs:
 - CPU time (user and system)
 - Execution duration
 
-![Performance Telemetry](screenshots/vantage_08.png)
-
 Telemetry can be configured via environment variables (see Environment Variables section below).
 
 ## Configuration
