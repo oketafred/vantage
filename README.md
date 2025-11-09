@@ -40,19 +40,22 @@ When jobs fail, we store the exception class, message, and full stack trace. Muc
 Visit `/vantage` to see:
 - Dashboard with stats and charts
 - List of all jobs with filtering (by status, queue, tags, etc.)
-- Individual job details with retry chains
+- Individual job details
 - Failed jobs page
 - Tag statistics and filtering
+- Recent batches tracking
 
 ![Dashboard](screenshots/vantage_01.png)
+
+![Recent Batches](screenshots/vantage_03.png)
 
 **Jobs List** - View and filter all jobs:
 
 ![Jobs List](screenshots/vantage_02.png)
 
-**Job Details** - See full job information with retry chains:
+**Job Details** - See full job information:
 
-![Job Details](screenshots/vantage_03.png)
+![Job Details](screenshots/vantage_02.png)
 
 **Note:** The dashboard requires authentication by default. Make sure you're logged in or customize the `viewVantage` gate as described in the Configuration section.
 
