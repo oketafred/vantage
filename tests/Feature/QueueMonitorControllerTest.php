@@ -1,22 +1,22 @@
 <?php
 
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    QueueJobRun::query()->delete();
+    VantageJob::query()->delete();
 });
 
 it('displays dashboard with job statistics', function () {
     // Create test jobs
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processed',
         'created_at' => now()->subDays(1),
     ]);
 
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'failed',
@@ -31,14 +31,14 @@ it('displays dashboard with job statistics', function () {
 });
 
 it('displays jobs list with filtering', function () {
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processed',
         'queue' => 'default',
     ]);
 
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\FailedJob',
         'status' => 'failed',
@@ -60,7 +60,7 @@ it('displays jobs list with filtering', function () {
 });
 
 it('displays individual job details', function () {
-    $job = QueueJobRun::create([
+    $job = VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processed',
@@ -80,13 +80,13 @@ it('displays individual job details', function () {
 });
 
 it('displays retry chain in job details', function () {
-    $original = QueueJobRun::create([
+    $original = VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'failed',
     ]);
 
-    $retry = QueueJobRun::create([
+    $retry = VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processed',
@@ -100,14 +100,14 @@ it('displays retry chain in job details', function () {
 });
 
 it('filters jobs by tags', function () {
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processed',
         'job_tags' => ['email', 'important'],
     ]);
 
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\OtherJob',
         'status' => 'processed',
@@ -122,7 +122,7 @@ it('filters jobs by tags', function () {
 });
 
 it('displays failed jobs page', function () {
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'failed',

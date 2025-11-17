@@ -3,7 +3,7 @@
 namespace houdaslassi\Vantage\Console\Commands;
 
 use Illuminate\Console\Command;
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 use Illuminate\Support\Str;
 
 class RetryFailedJob extends Command
@@ -13,7 +13,7 @@ class RetryFailedJob extends Command
 
     public function handle(): int
     {
-        $run = QueueJobRun::find($this->argument('run_id'));
+        $run = VantageJob::find($this->argument('run_id'));
 
         if (! $run || $run->status !== 'failed') {
             $this->error('Job run not found or not failed.');
@@ -62,7 +62,7 @@ class RetryFailedJob extends Command
     /**
      * Restore job instance from stored payload
      */
-    protected function restoreJobFromPayload(QueueJobRun $run): ?object
+    protected function restoreJobFromPayload(VantageJob $run): ?object
     {
         if (!$run->payload) {
             return null;

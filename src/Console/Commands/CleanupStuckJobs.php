@@ -3,7 +3,7 @@
 namespace houdaslassi\Vantage\Console\Commands;
 
 use Illuminate\Console\Command;
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 
 class CleanupStuckJobs extends Command
 {
@@ -21,7 +21,7 @@ class CleanupStuckJobs extends Command
         $cutoff = now()->subHours($timeoutHours);
         
         // Find stuck jobs
-        $stuckJobs = QueueJobRun::where('status', 'processing')
+        $stuckJobs = VantageJob::where('status', 'processing')
             ->where('started_at', '<', $cutoff)
             ->get();
         

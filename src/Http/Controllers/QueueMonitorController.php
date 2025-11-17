@@ -2,7 +2,7 @@
 
 namespace houdaslassi\Vantage\Http\Controllers;
 
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 use houdaslassi\Vantage\Support\QueueDepthChecker;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -22,13 +22,13 @@ class QueueMonitorController extends Controller
 
         // Overall statistics
         $stats = [
-            'total' => QueueJobRun::where('created_at', '>', $since)->count(),
-            'processed' => QueueJobRun::where('created_at', '>', $since)->where('status', 'processed')->count(),
-            'failed' => QueueJobRun::where('created_at', '>', $since)->where('status', 'failed')->count(),
-            'processing' => QueueJobRun::where('status', 'processing')
+            'total' => VantageJob::where('created_at', '>', $since)->count(),
+            'processed' => VantageJob::where('created_at', '>', $since)->where('status', 'processed')->count(),
+            'failed' => VantageJob::where('created_at', '>', $since)->where('status', 'failed')->count(),
+            'processing' => VantageJob::where('status', 'processing')
                 ->where('created_at', '>', now()->subHour()) // Only recent processing jobs
                 ->count(),
-            'avg_duration' => QueueJobRun::where('created_at', '>', $since)
+            'avg_duration' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('duration_ms')
                 ->avg('duration_ms'),
         ];
@@ -40,12 +40,12 @@ class QueueMonitorController extends Controller
             : 0;
 
         // Recent jobs
-        $recentJobs = QueueJobRun::latest('id')
+        $recentJobs = VantageJob::latest('id')
             ->limit(20)
             ->get();
 
         // Jobs by status (for chart)
-        $jobsByStatus = QueueJobRun::select('status', DB::raw('count(*) as count'))
+        $jobsByStatus = VantageJob::select('status', DB::raw('count(*) as count'))
             ->where('created_at', '>', $since)
             ->groupBy('status')
             ->get()
@@ -53,7 +53,7 @@ class QueueMonitorController extends Controller
 
         // Jobs by hour (for trend chart)
         // Use database-agnostic date formatting
-        $connectionName = (new QueueJobRun)->getConnectionName();
+        $connectionName = (new VantageJob)->getConnectionName();
         $connection = DB::connection($connectionName);
         $driver = $connection->getDriverName();
         
@@ -68,7 +68,7 @@ class QueueMonitorController extends Controller
             $dateFormat = DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as hour');
         }
         
-        $jobsByHour = QueueJobRun::select(
+        $jobsByHour = VantageJob::select(
                 $dateFormat,
                 DB::raw('count(*) as count'),
                 DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed_count')
@@ -79,7 +79,7 @@ class QueueMonitorController extends Controller
             ->get();
 
         // Top failing jobs
-        $topFailingJobs = QueueJobRun::select('job_class', DB::raw('count(*) as failure_count'))
+        $topFailingJobs = VantageJob::select('job_class', DB::raw('count(*) as failure_count'))
             ->where('created_at', '>', $since)
             ->where('status', 'failed')
             ->groupBy('job_class')
@@ -88,7 +88,7 @@ class QueueMonitorController extends Controller
             ->get();
 
         // Top exceptions
-        $topExceptions = QueueJobRun::select('exception_class', DB::raw('count(*) as count'))
+        $topExceptions = VantageJob::select('exception_class', DB::raw('count(*) as count'))
             ->where('created_at', '>', $since)
             ->whereNotNull('exception_class')
             ->groupBy('exception_class')
@@ -97,7 +97,7 @@ class QueueMonitorController extends Controller
             ->get();
 
         // Slowest jobs
-        $slowestJobs = QueueJobRun::select('job_class', DB::raw('AVG(duration_ms) as avg_duration'), DB::raw('MAX(duration_ms) as max_duration'), DB::raw('count(*) as count'))
+        $slowestJobs = VantageJob::select('job_class', DB::raw('AVG(duration_ms) as avg_duration'), DB::raw('MAX(duration_ms) as max_duration'), DB::raw('count(*) as count'))
             ->where('created_at', '>', $since)
             ->whereNotNull('duration_ms')
             ->groupBy('job_class')
@@ -106,7 +106,7 @@ class QueueMonitorController extends Controller
             ->get();
 
         // Top tags
-        $topTags = QueueJobRun::where('created_at', '>', $since)
+        $topTags = VantageJob::where('created_at', '>', $since)
             ->whereNotNull('job_tags')
             ->get()
             ->flatMap(function ($job) {
@@ -159,22 +159,22 @@ class QueueMonitorController extends Controller
 
         // Performance statistics
         $performanceStats = [
-            'avg_memory_start_bytes' => QueueJobRun::where('created_at', '>', $since)
+            'avg_memory_start_bytes' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('memory_start_bytes')
                 ->avg('memory_start_bytes'),
-            'avg_memory_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+            'avg_memory_end_bytes' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('memory_end_bytes')
                 ->avg('memory_end_bytes'),
-            'avg_memory_peak_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+            'avg_memory_peak_end_bytes' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('memory_peak_end_bytes')
                 ->avg('memory_peak_end_bytes'),
-            'max_memory_peak_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+            'max_memory_peak_end_bytes' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('memory_peak_end_bytes')
                 ->max('memory_peak_end_bytes'),
-            'avg_cpu_user_ms' => QueueJobRun::where('created_at', '>', $since)
+            'avg_cpu_user_ms' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('cpu_user_ms')
                 ->avg('cpu_user_ms'),
-            'avg_cpu_sys_ms' => QueueJobRun::where('created_at', '>', $since)
+            'avg_cpu_sys_ms' => VantageJob::where('created_at', '>', $since)
                 ->whereNotNull('cpu_sys_ms')
                 ->avg('cpu_sys_ms'),
         ];
@@ -187,7 +187,7 @@ class QueueMonitorController extends Controller
         $performanceStats['avg_cpu_total_ms'] = $avgCpuTotal;
 
         // Top memory-consuming jobs
-        $topMemoryJobs = QueueJobRun::select('job_class', DB::raw('AVG(memory_peak_end_bytes) as avg_memory_peak'), DB::raw('MAX(memory_peak_end_bytes) as max_memory_peak'), DB::raw('count(*) as count'))
+        $topMemoryJobs = VantageJob::select('job_class', DB::raw('AVG(memory_peak_end_bytes) as avg_memory_peak'), DB::raw('MAX(memory_peak_end_bytes) as max_memory_peak'), DB::raw('count(*) as count'))
             ->where('created_at', '>', $since)
             ->whereNotNull('memory_peak_end_bytes')
             ->groupBy('job_class')
@@ -196,7 +196,7 @@ class QueueMonitorController extends Controller
             ->get();
 
         // Top CPU-consuming jobs
-        $topCpuJobs = QueueJobRun::select(
+        $topCpuJobs = VantageJob::select(
                 'job_class',
                 DB::raw('AVG(cpu_user_ms) as avg_cpu_user'),
                 DB::raw('AVG(cpu_sys_ms) as avg_cpu_sys'),
@@ -236,7 +236,7 @@ class QueueMonitorController extends Controller
      */
     public function jobs(Request $request)
     {
-        $query = QueueJobRun::query();
+        $query = VantageJob::query();
 
         // Apply filters
         if ($request->filled('status')) {
@@ -285,11 +285,11 @@ class QueueMonitorController extends Controller
             ->withQueryString();
 
         // Get filter options
-        $queues = QueueJobRun::distinct()->pluck('queue')->filter();
-        $jobClasses = QueueJobRun::distinct()->pluck('job_class')->map(fn($c) => class_basename($c))->filter();
+        $queues = VantageJob::distinct()->pluck('queue')->filter();
+        $jobClasses = VantageJob::distinct()->pluck('job_class')->map(fn($c) => class_basename($c))->filter();
 
         // Get all available tags with counts
-        $allTags = QueueJobRun::whereNotNull('job_tags')
+        $allTags = VantageJob::whereNotNull('job_tags')
             ->get()
             ->flatMap(function ($job) {
                 return collect($job->job_tags)->map(function ($tag) use ($job) {
@@ -320,7 +320,7 @@ class QueueMonitorController extends Controller
      */
     public function show($id)
     {
-        $job = QueueJobRun::findOrFail($id);
+        $job = VantageJob::findOrFail($id);
 
         // Get retry chain
         $retryChain = [];
@@ -340,7 +340,7 @@ class QueueMonitorController extends Controller
         $since = $this->getSinceDate($period);
 
         // Get all jobs with tags
-        $jobs = QueueJobRun::whereNotNull('job_tags')
+        $jobs = VantageJob::whereNotNull('job_tags')
             ->where('created_at', '>', $since)
             ->get();
 
@@ -391,7 +391,7 @@ class QueueMonitorController extends Controller
      */
     public function failed(Request $request)
     {
-        $jobs = QueueJobRun::where('status', 'failed')
+        $jobs = VantageJob::where('status', 'failed')
             ->latest('id')
             ->paginate(50);
 
@@ -403,7 +403,7 @@ class QueueMonitorController extends Controller
      */
     public function retry($id)
     {
-        $run = QueueJobRun::findOrFail($id);
+        $run = VantageJob::findOrFail($id);
 
         if ($run->status !== 'failed') {
             return back()->with('error', 'Only failed jobs can be retried.');
@@ -447,7 +447,7 @@ class QueueMonitorController extends Controller
      * Restore job from the original Laravel serialized payload
      * This is the simplest and most accurate method
      */
-    protected function restoreJobFromPayload(QueueJobRun $run): ?object
+    protected function restoreJobFromPayload(VantageJob $run): ?object
     {
         if (!$run->payload) {
             return null;

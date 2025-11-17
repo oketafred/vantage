@@ -1,11 +1,11 @@
 <?php
 
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 use Illuminate\Support\Str;
 
-function makeJob(array $overrides = []): QueueJobRun
+function makeJob(array $overrides = []): VantageJob
 {
-    return QueueJobRun::create(array_merge([
+    return VantageJob::create(array_merge([
         'uuid' => (string) Str::uuid(),
         'job_class' => 'App\\Jobs\\ExampleJob',
         'queue' => 'default',
@@ -21,7 +21,7 @@ it('can create a queue job run', function () {
         'started_at' => now(),
     ]);
 
-    expect($job)->toBeInstanceOf(QueueJobRun::class)
+    expect($job)->toBeInstanceOf(VantageJob::class)
         ->and($job->uuid)->toBe('test-uuid-123')
         ->and($job->job_class)->toBe('App\\Jobs\\ExampleJob')
         ->and($job->status)->toBe('processing');
@@ -60,7 +60,7 @@ it('has retried_from relationship', function () {
         'retried_from_id' => $parentJob->id,
     ]);
 
-    expect($retryJob->retriedFrom)->toBeInstanceOf(QueueJobRun::class)
+    expect($retryJob->retriedFrom)->toBeInstanceOf(VantageJob::class)
         ->and($retryJob->retriedFrom->id)->toBe($parentJob->id);
 });
 
@@ -141,10 +141,10 @@ it('filters by tag scope', function () {
         'job_tags' => ['important'],
     ]);
 
-    $jobsWithEmail = QueueJobRun::withTag('email')->get();
+    $jobsWithEmail = VantageJob::withTag('email')->get();
     expect($jobsWithEmail)->toHaveCount(2);
 
-    $jobsWithImportant = QueueJobRun::withTag('important')->get();
+    $jobsWithImportant = VantageJob::withTag('important')->get();
     expect($jobsWithImportant)->toHaveCount(2);
 });
 
@@ -164,9 +164,9 @@ it('filters by status scope', function () {
         'status' => 'processing',
     ]);
 
-    expect(QueueJobRun::failed()->count())->toBe(1)
-        ->and(QueueJobRun::successful()->count())->toBe(1)
-        ->and(QueueJobRun::processing()->count())->toBe(1);
+    expect(VantageJob::failed()->count())->toBe(1)
+        ->and(VantageJob::successful()->count())->toBe(1)
+        ->and(VantageJob::processing()->count())->toBe(1);
 });
 
 it('casts telemetry fields to integers', function () {

@@ -4,9 +4,9 @@ namespace houdaslassi\Vantage\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class QueueJobRun extends Model
+class VantageJob extends Model
 {
-    protected $table = 'queue_job_runs';
+    protected $table = 'vantage_jobs';
 
     protected static $unguarded = true;
 

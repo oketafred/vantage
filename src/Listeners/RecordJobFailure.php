@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Str;
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 
 class RecordJobFailure
 {
@@ -37,7 +37,7 @@ class RecordJobFailure
                       || (method_exists($event->job, 'getJobId') && $event->job->getJobId());
 
         if ($hasStableUuid) {
-            $row = QueueJobRun::where('uuid', $uuid)
+            $row = VantageJob::where('uuid', $uuid)
                 ->where('status', 'processing')
                 ->first();
         }
@@ -45,7 +45,7 @@ class RecordJobFailure
         // Fallback: try by job class, queue, connection (ONLY if UUID not available)
         // This should rarely be needed since Laravel 8+ provides uuid()
         if (!$row && !$hasStableUuid) {
-            $row = QueueJobRun::where('job_class', $jobClass)
+            $row = VantageJob::where('job_class', $jobClass)
                 ->where('queue', $queue)
                 ->where('connection', $connection)
                 ->where('status', 'processing')
@@ -111,7 +111,7 @@ class RecordJobFailure
                 'uuid' => $uuid,
             ]);
 
-            $row = QueueJobRun::create([
+            $row = VantageJob::create([
                 'uuid'             => $uuid,
                 'job_class'        => $jobClass,
                 'queue'            => $queue,

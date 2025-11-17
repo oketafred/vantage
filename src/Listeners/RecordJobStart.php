@@ -7,7 +7,7 @@ use houdaslassi\Vantage\Support\TagExtractor;
 use houdaslassi\Vantage\Support\PayloadExtractor;
 use houdaslassi\Vantage\Support\JobPerformanceContext;
 use Illuminate\Queue\Events\JobProcessing;
-use houdaslassi\Vantage\Models\QueueJobRun;
+use houdaslassi\Vantage\Models\VantageJob;
 
 class RecordJobStart
 {
@@ -60,7 +60,7 @@ class RecordJobStart
 
         // Always create a new record on job start
         // The UUID will be used by Success/Failure listeners to find and update this record
-        QueueJobRun::create([
+        VantageJob::create([
             'uuid'             => $uuid,
             'job_class'        => $jobClass,
             'queue'            => $queue,
