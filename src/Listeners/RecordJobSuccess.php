@@ -7,7 +7,7 @@ use HoudaSlassi\Vantage\Support\TagExtractor;
 use HoudaSlassi\Vantage\Support\PayloadExtractor;
 use HoudaSlassi\Vantage\Support\JobPerformanceContext;
 use Illuminate\Queue\Events\JobProcessed;
-use HoudaSlassi\Vantage\Models\QueueJobRun;
+use HoudaSlassi\Vantage\Models\VantageJob;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -36,7 +36,7 @@ class RecordJobSuccess
                       || (method_exists($event->job, 'getJobId') && $event->job->getJobId());
         
         if ($hasStableUuid) {
-            $row = QueueJobRun::where('uuid', $uuid)
+            $row = VantageJob::where('uuid', $uuid)
                 ->where('status', 'processing')
                 ->first();
         }
@@ -44,7 +44,7 @@ class RecordJobSuccess
         // Fallback: try by job class, queue, connection (ONLY if UUID not available)
         // This should rarely be needed since Laravel 8+ provides uuid()
         if (!$row && !$hasStableUuid) {
-            $row = QueueJobRun::where('job_class', $jobClass)
+            $row = VantageJob::where('job_class', $jobClass)
                 ->where('queue', $queue)
                 ->where('connection', $connection)
                 ->where('status', 'processing')
@@ -116,7 +116,7 @@ class RecordJobSuccess
                 'uuid' => $uuid,
             ]);
 
-                QueueJobRun::create([
+                VantageJob::create([
                     'uuid' => $uuid,
                     'job_class' => $jobClass,
                     'queue' => $queue,

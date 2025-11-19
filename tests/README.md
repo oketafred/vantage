@@ -15,7 +15,7 @@ composer test
 ./vendor/bin/pest --coverage
 
 # Run specific test file
-./vendor/bin/pest tests/Unit/QueueJobRunTest.php
+./vendor/bin/pest tests/Unit/VantageJobTest.php
 
 # Run in parallel (faster)
 ./vendor/bin/pest -p
@@ -24,7 +24,7 @@ composer test
 ## Test Structure
 
 ### Unit Tests (`tests/Unit/`)
-- **QueueJobRunTest.php**: Tests for the QueueJobRun model
+- **VantageJobTest.php**: Tests for the VantageJob model
   - Model creation and attributes
   - Relationship tests (retries, retriedFrom)
   - Scope methods (withTag, failed, successful, etc.)
@@ -108,9 +108,9 @@ php artisan queue:work --tries=3 --timeout=300
 
 # Terminal 3: Monitor database
 php artisan tinker
->>> \HoudaSlassi\Vantage\Models\QueueJobRun::count()
->>> \HoudaSlassi\Vantage\Models\QueueJobRun::where('status', 'processed')->count()
->>> \HoudaSlassi\Vantage\Models\QueueJobRun::where('status', 'failed')->count()
+>>> \HoudaSlassi\Vantage\Models\VantageJob::count()
+>>> \HoudaSlassi\Vantage\Models\VantageJob::where('status', 'processed')->count()
+>>> \HoudaSlassi\Vantage\Models\VantageJob::where('status', 'failed')->count()
 ```
 
 ## Writing New Tests
@@ -119,7 +119,7 @@ php artisan tinker
 
 ```php
 it('does something', function () {
-    $job = QueueJobRun::create([
+    $job = VantageJob::create([
         'uuid' => Str::uuid(),
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processing',

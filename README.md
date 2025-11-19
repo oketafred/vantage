@@ -31,7 +31,7 @@ The package will automatically register itself. Publish the config file to custo
 
 ### Job Tracking
 
-Every job gets tracked in the `queue_job_runs` table with:
+Every job gets tracked in the `vantage_jobs` table with:
 - Job class, queue, connection
 - Status (processing, processed, failed)
 - Start/finish times and duration
@@ -194,7 +194,7 @@ If your application uses multiple databases, you can specify which database conn
 VANTAGE_DATABASE_CONNECTION=mysql
 ```
 
-This ensures the `queue_job_runs` table is created and accessed from the correct database connection. The package automatically detects your database driver (MySQL, PostgreSQL, SQLite) and uses the appropriate SQL syntax for queries.
+This ensures the `vantage_jobs` table is created and accessed from the correct database connection. The package automatically detects your database driver (MySQL, PostgreSQL, SQLite) and uses the appropriate SQL syntax for queries.
 
 ### Authentication
 
@@ -269,7 +269,7 @@ php artisan vantage:cleanup-stuck --dry-run
 # Master switch - Enable/disable entire package (default: true)
 VANTAGE_ENABLED=true
 
-# Database connection for queue_job_runs table (optional)
+# Database connection for vantage_jobs table (optional)
 VANTAGE_DATABASE_CONNECTION=mysql
 
 # Authentication (default: true)

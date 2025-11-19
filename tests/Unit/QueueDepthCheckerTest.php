@@ -1,6 +1,6 @@
 <?php
 
-use HoudaSlassi\Vantage\Models\QueueJobRun;
+use HoudaSlassi\Vantage\Models\VantageJob;
 use HoudaSlassi\Vantage\Support\QueueDepthChecker;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -91,7 +91,7 @@ it('falls back to processing jobs when the driver is unsupported', function () {
     config()->set('queue.default', 'sync');
     config()->set('queue.connections.sync.driver', 'sync');
 
-    QueueJobRun::create([
+    VantageJob::create([
         'uuid' => 'processing-job',
         'job_class' => 'App\\Jobs\\ExampleJob',
         'queue' => 'reports',

@@ -3,7 +3,7 @@
 use HoudaSlassi\Vantage\Listeners\RecordJobFailure;
 use HoudaSlassi\Vantage\Listeners\RecordJobStart;
 use HoudaSlassi\Vantage\Listeners\RecordJobSuccess;
-use HoudaSlassi\Vantage\Models\QueueJobRun;
+use HoudaSlassi\Vantage\Models\VantageJob;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    QueueJobRun::query()->delete();
+    VantageJob::query()->delete();
 });
 
 it('records job start when job processing event is fired', function () {
@@ -32,7 +32,7 @@ it('records job start when job processing event is fired', function () {
     $listener = new RecordJobStart();
     $listener->handle($event);
 
-    $record = QueueJobRun::where('uuid', 'test-uuid-123')->first();
+    $record = VantageJob::where('uuid', 'test-uuid-123')->first();
 
     expect($record)->not->toBeNull()
         ->and($record->job_class)->toBe('App\\Jobs\\TestJob')
@@ -43,7 +43,7 @@ it('records job start when job processing event is fired', function () {
 
 it('records job success and calculates duration', function () {
     // Create a processing job first
-    $jobRun = QueueJobRun::create([
+    $jobRun = VantageJob::create([
         'uuid' => 'test-uuid-123',
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processing',
@@ -62,7 +62,7 @@ it('records job success and calculates duration', function () {
     $listener = new RecordJobSuccess();
     $listener->handle($event);
 
-    $record = QueueJobRun::where('uuid', 'test-uuid-123')->first();
+    $record = VantageJob::where('uuid', 'test-uuid-123')->first();
 
     expect($record->status)->toBe('processed')
         ->and($record->finished_at)->not->toBeNull()
@@ -71,7 +71,7 @@ it('records job success and calculates duration', function () {
 
 it('updates same record from processing to failed', function () {
     // Create a processing record first
-    $jobRun = QueueJobRun::create([
+    $jobRun = VantageJob::create([
         'uuid' => 'test-uuid-failed',
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processing',
@@ -92,7 +92,7 @@ it('updates same record from processing to failed', function () {
     $listener->handle($event);
 
     // Verify it's the SAME record (same ID)
-    $updated = QueueJobRun::find($jobRun->id);
+    $updated = VantageJob::find($jobRun->id);
 
     expect($updated->id)->toBe($jobRun->id)
         ->and($updated->status)->toBe('failed')
@@ -102,12 +102,12 @@ it('updates same record from processing to failed', function () {
         ->and($updated->duration_ms)->toBeGreaterThan(0);
 
     // Verify no duplicate records were created
-    expect(QueueJobRun::where('uuid', 'test-uuid-failed')->count())->toBe(1);
+    expect(VantageJob::where('uuid', 'test-uuid-failed')->count())->toBe(1);
 });
 
 it('updates same record from processing to processed', function () {
     // Create a processing record first
-    $jobRun = QueueJobRun::create([
+    $jobRun = VantageJob::create([
         'uuid' => 'test-uuid-processed',
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'processing',
@@ -127,7 +127,7 @@ it('updates same record from processing to processed', function () {
     $listener->handle($event);
 
     // Verify it's the SAME record (same ID)
-    $updated = QueueJobRun::find($jobRun->id);
+    $updated = VantageJob::find($jobRun->id);
 
     expect($updated->id)->toBe($jobRun->id)
         ->and($updated->status)->toBe('processed')
@@ -135,7 +135,7 @@ it('updates same record from processing to processed', function () {
         ->and($updated->duration_ms)->toBeGreaterThan(0);
 
     // Verify no duplicate records were created
-    expect(QueueJobRun::where('uuid', 'test-uuid-processed')->count())->toBe(1);
+    expect(VantageJob::where('uuid', 'test-uuid-processed')->count())->toBe(1);
 });
 
 it('records job failure with exception details', function () {
@@ -157,7 +157,7 @@ it('records job failure with exception details', function () {
     $listener = new RecordJobFailure();
     $listener->handle($event);
 
-    $record = QueueJobRun::where('status', 'failed')
+    $record = VantageJob::where('status', 'failed')
         ->where('job_class', 'App\\Jobs\\TestJob')
         ->first();
 
@@ -170,7 +170,7 @@ it('records job failure with exception details', function () {
 
 it('tracks retry chain via retried_from_id', function () {
     // Create original job
-    $original = QueueJobRun::create([
+    $original = VantageJob::create([
         'uuid' => 'original-uuid',
         'job_class' => 'App\\Jobs\\TestJob',
         'status' => 'failed',
@@ -204,7 +204,7 @@ it('tracks retry chain via retried_from_id', function () {
     $startListener = new RecordJobStart();
     $startListener->handle($startEvent);
 
-    $retryRecord = QueueJobRun::where('uuid', 'retry-uuid')->first();
+    $retryRecord = VantageJob::where('uuid', 'retry-uuid')->first();
 
     expect($retryRecord->retried_from_id)->toBe($original->id)
         ->and($retryRecord->attempt)->toBe(2);
@@ -256,7 +256,7 @@ it('extracts and stores job tags', function () {
     $listener = new RecordJobStart();
     $listener->handle($event);
 
-    $record = QueueJobRun::where('uuid', 'tagged-uuid')->first();
+    $record = VantageJob::where('uuid', 'tagged-uuid')->first();
 
     // At minimum, queue name should be tagged (auto tag)
     expect($record->job_tags)->toBeArray()

@@ -7,13 +7,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\SlackMessage;
-use HoudaSlassi\Vantage\Models\QueueJobRun;
+use HoudaSlassi\Vantage\Models\VantageJob;
 
 class JobFailedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public QueueJobRun $jobRun) {}
+    public function __construct(public VantageJob $jobRun) {}
 
     public function via($notifiable): array
     {

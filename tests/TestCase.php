@@ -37,10 +37,12 @@ abstract class TestCase extends Orchestra
 
         // Enable routes for testing
         $app['config']->set('vantage.routes', true);
-        $app['config']->set('vantage.auth.enabled', false);
 
-        // Set application key for encryption
-        $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('a', 32)));
+        // Provide application key for encryption-dependent features
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+
+        // Disable dashboard auth during tests
+        $app['config']->set('vantage.auth.enabled', false);
     }
 }
 
