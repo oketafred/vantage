@@ -110,22 +110,17 @@
 // Define function globally so it's accessible from onclick
 window.addTagToFilter = function(tag) {
     if (!tag) {
-        console.error('No tag provided');
         return false;
     }
-    
-    console.log('addTagToFilter called with tag:', tag);
     
     // Find the tags input in the main filters form
     const form = document.getElementById('jobs-filter-form');
     if (!form) {
-        console.error('Form not found');
         return false;
     }
     
     const tagsInput = form.querySelector('input[name="tags"]');
     if (!tagsInput) {
-        console.error('Tags input not found');
         return false;
     }
     
@@ -152,13 +147,7 @@ window.addTagToFilter = function(tag) {
     // Set the value
     tagsInput.value = newTagsValue;
     
-    // Debug: log what we're submitting
-    console.log('Tag:', normalizedTag);
-    console.log('Current tags:', currentTags);
-    console.log('New tags value:', newTagsValue);
-    
     // Submit the main form
-    console.log('Submitting form...');
     form.submit();
     
     return false; // Prevent default
