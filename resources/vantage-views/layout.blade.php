@@ -11,7 +11,7 @@
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <nav class="bg-white shadow-sm border-b border-gray-200 fixed w-full top-0 z-50">
         <div class="w-full px-4 sm:px-6 lg:px-10">
             <div class="flex justify-between h-16">
                 <div class="flex">
@@ -45,7 +45,7 @@
     </nav>
 
     <!-- Content -->
-    <main class="w-full px-4 sm:px-6 lg:px-10 py-8">
+    <main class="w-full px-4 sm:px-6 lg:px-10 py-8 mt-16">
         @if(session('success'))
             <div class="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded relative" role="alert">
                 <span class="block sm:inline">{{ session('success') }}</span>
