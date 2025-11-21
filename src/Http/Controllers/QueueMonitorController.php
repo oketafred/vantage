@@ -40,8 +40,15 @@ class QueueMonitorController extends Controller
             ? round(($stats['processed'] / $completedJobs) * 100, 1)
             : 0;
 
-        // Recent jobs
-        $recentJobs = VantageJob::latest('id')
+        // Recent jobs - exclude large payload and stack columns
+        $recentJobs = VantageJob::select([
+                'id', 'uuid', 'job_class', 'queue', 'connection', 'attempt', 
+                'status', 'started_at', 'finished_at', 'duration_ms',
+                'exception_class', 'exception_message', 'job_tags', 'retried_from_id',
+                'created_at', 'updated_at'
+                // Exclude: payload, stack (large text fields)
+            ])
+            ->latest('id')
             ->limit(20)
             ->get();
 
@@ -106,8 +113,9 @@ class QueueMonitorController extends Controller
             ->limit(5)
             ->get();
 
-        // Top tags
-        $topTags = VantageJob::where('created_at', '>', $since)
+        // Top tags - only select needed columns
+        $topTags = VantageJob::select(['job_tags', 'status', 'job_class'])
+            ->where('created_at', '>', $since)
             ->whereNotNull('job_tags')
             ->get()
             ->flatMap(function ($job) {
@@ -237,7 +245,18 @@ class QueueMonitorController extends Controller
      */
     public function jobs(Request $request)
     {
-        $query = VantageJob::query();
+        // Exclude large columns (payload, stack) from jobs list to improve performance
+        $query = VantageJob::select([
+            'id', 'uuid', 'job_class', 'queue', 'connection', 'attempt', 
+            'status', 'started_at', 'finished_at', 'duration_ms',
+            'exception_class', 'exception_message', 'job_tags', 'retried_from_id',
+            'created_at', 'updated_at',
+            // Performance telemetry fields
+            'memory_start_bytes', 'memory_end_bytes', 'memory_peak_start_bytes',
+            'memory_peak_end_bytes', 'memory_peak_delta_bytes',
+            'cpu_user_ms', 'cpu_sys_ms'
+            // Exclude: payload, stack (large text fields not needed for list view)
+        ]);
 
         // Apply filters
         if ($request->filled('status')) {
@@ -273,12 +292,11 @@ class QueueMonitorController extends Controller
                     $query->where(function($q) use ($tags, $driver) {
                         foreach ($tags as $tag) {
                             if ($driver === 'sqlite') {
-                                // SQLite: Use JSON functions if available, otherwise fallback to LIKE
-                                // Try json_each first (SQLite 3.38+), fallback to LIKE pattern
+                                // SQLite: json_each().value returns the actual string, not JSON-encoded
                                 $q->orWhereRaw("EXISTS (
-                                    SELECT 1 FROM json_each(job_tags) 
+                                    SELECT 1 FROM json_each(vantage_jobs.job_tags) 
                                     WHERE json_each.value = ?
-                                )", [json_encode($tag)]);
+                                )", [$tag]);
                             } else {
                                 // MySQL and PostgreSQL support whereJsonContains
                                 $q->orWhereJsonContains('job_tags', $tag);
@@ -289,11 +307,12 @@ class QueueMonitorController extends Controller
                     // Jobs that have ALL of the specified tags (default)
                     foreach ($tags as $tag) {
                         if ($driver === 'sqlite') {
-                            // SQLite: Use JSON functions if available
+                            // SQLite: json_each().value returns the actual string, not JSON-encoded
+                            // So we compare directly to the tag value
                             $query->whereRaw("EXISTS (
-                                SELECT 1 FROM json_each(job_tags) 
+                                SELECT 1 FROM json_each(vantage_jobs.job_tags) 
                                 WHERE json_each.value = ?
-                            )", [json_encode($tag)]);
+                            )", [$tag]);
                         } else {
                             // MySQL and PostgreSQL
                             $query->whereJsonContains('job_tags', $tag);
@@ -309,10 +328,11 @@ class QueueMonitorController extends Controller
             $driver = $connection->getDriverName();
 
             if ($driver === 'sqlite') {
+                // SQLite: json_each().value returns the actual string, not JSON-encoded
                 $query->whereRaw("EXISTS (
-                    SELECT 1 FROM json_each(job_tags) 
+                    SELECT 1 FROM json_each(vantage_jobs.job_tags) 
                     WHERE json_each.value = ?
-                )", [json_encode($tag)]);
+                )", [$tag]);
             } else {
                 $query->whereJsonContains('job_tags', $tag);
             }
@@ -340,8 +360,9 @@ class QueueMonitorController extends Controller
         
         $jobClasses = VantageJob::distinct()->pluck('job_class')->map(fn($c) => class_basename($c))->filter();
 
-        // Get all available tags with counts
-        $allTags = VantageJob::whereNotNull('job_tags')
+        // Get all available tags with counts - only select needed columns
+        $allTags = VantageJob::select(['job_tags', 'status'])
+            ->whereNotNull('job_tags')
             ->get()
             ->flatMap(function ($job) {
                 return collect($job->job_tags)->map(function ($tag) use ($job) {
@@ -391,8 +412,9 @@ class QueueMonitorController extends Controller
         $period = $request->get('period', '7d');
         $since = $this->getSinceDate($period);
 
-        // Get all jobs with tags
-        $jobs = VantageJob::whereNotNull('job_tags')
+        // Get all jobs with tags - only select needed columns
+        $jobs = VantageJob::select(['job_tags', 'status', 'duration_ms'])
+            ->whereNotNull('job_tags')
             ->where('created_at', '>', $since)
             ->get();
 
@@ -443,7 +465,16 @@ class QueueMonitorController extends Controller
      */
     public function failed(Request $request)
     {
-        $jobs = VantageJob::where('status', 'failed')
+        // Exclude large columns (payload) from failed jobs list
+        // Keep stack for debugging, but exclude payload
+        $jobs = VantageJob::select([
+                'id', 'uuid', 'job_class', 'queue', 'connection', 'attempt', 
+                'status', 'started_at', 'finished_at', 'duration_ms',
+                'exception_class', 'exception_message', 'stack', 'job_tags', 
+                'retried_from_id', 'created_at', 'updated_at'
+                // Exclude: payload (very large, not needed for failed list)
+            ])
+            ->where('status', 'failed')
             ->latest('id')
             ->paginate(50);
 
