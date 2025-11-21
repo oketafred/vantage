@@ -729,11 +729,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     try {
-        const chart =     // For single data point, ensure chart displays properly
-    const chartType = labels.length === 1 ? 'bar' : 'line';
-    const pointRadius = labels.length === 1 ? 8 : 3;
-    
-    new Chart(ctx, {
+        // For single data point, ensure chart displays properly
+        const chartType = labels.length === 1 ? 'bar' : 'line';
+        const pointRadius = labels.length === 1 ? 8 : 3;
+        
+        const chart = new Chart(ctx, {
         type: chartType,
         data: {
             labels: labels,
