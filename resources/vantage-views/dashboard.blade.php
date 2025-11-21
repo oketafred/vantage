@@ -673,25 +673,68 @@
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('successRateChart');
     
+    if (!ctx) {
+        console.error('Chart canvas element not found!');
+        return;
+    }
+    
     // Prepare data
     const hours = @json($jobsByHour->pluck('hour'));
     const totals = @json($jobsByHour->pluck('count'));
     const failures = @json($jobsByHour->pluck('failed_count'));
     
-    // Calculate success rates
+    console.log('Chart data:', { hours, totals, failures });
+    
+    // Ensure we have data
+    if (!hours || hours.length === 0) {
+        console.warn('No chart data available');
+        return;
+    }
+    
+    // Calculate success rates - ensure failures is a number
     const successRates = totals.map((total, index) => {
-        if (total === 0) return 0;
-        return ((total - failures[index]) / total * 100).toFixed(1);
+        const failed = parseInt(failures[index]) || 0;
+        const totalNum = parseInt(total) || 0;
+        if (totalNum === 0) return 0;
+        return parseFloat(((totalNum - failed) / totalNum * 100).toFixed(1));
     });
     
-    // Format labels
+    // Format labels - handle date parsing
     const labels = hours.map(h => {
-        const date = new Date(h);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
+        try {
+            // Handle MySQL/SQLite datetime format: "2025-11-21 19:00:00"
+            // Convert to ISO format: "2025-11-21T19:00:00"
+            const isoDate = h.replace(' ', 'T');
+            const date = new Date(isoDate);
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date:', h);
+                return h;
+            }
+            const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
+            return formatted;
+        } catch (e) {
+            console.error('Date parsing error:', e, h);
+            return h;
+        }
     });
+    
+    console.log('Chart labels:', labels);
+    console.log('Success rates:', successRates);
+    
+    console.log('Creating chart with data:', {
+        labels: labels,
+        successRates: successRates,
+        totals: totals,
+        failures: failures
+    });
+    
+    try {
+        const chart =     // For single data point, ensure chart displays properly
+    const chartType = labels.length === 1 ? 'bar' : 'line';
+    const pointRadius = labels.length === 1 ? 8 : 3;
     
     new Chart(ctx, {
-        type: 'line',
+        type: chartType,
         data: {
             labels: labels,
             datasets: [
@@ -700,27 +743,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: successRates,
                     borderColor: 'rgb(34, 197, 94)',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    tension: 0.4,
+                    tension: labels.length === 1 ? 0 : 0.4,
                     fill: true,
-                    yAxisID: 'y'
+                    yAxisID: 'y',
+                    pointRadius: pointRadius,
+                    pointHoverRadius: pointRadius + 2,
                 },
                 {
                     label: 'Total Jobs',
                     data: totals,
                     borderColor: 'rgb(99, 102, 241)',
                     backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    tension: 0.4,
+                    tension: labels.length === 1 ? 0 : 0.4,
                     fill: true,
-                    yAxisID: 'y1'
+                    yAxisID: 'y1',
+                    pointRadius: pointRadius,
+                    pointHoverRadius: pointRadius + 2,
                 },
                 {
                     label: 'Failed Jobs',
                     data: failures,
                     borderColor: 'rgb(239, 68, 68)',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: 0.4,
+                    tension: labels.length === 1 ? 0 : 0.4,
                     fill: true,
-                    yAxisID: 'y1'
+                    yAxisID: 'y1',
+                    pointRadius: pointRadius,
+                    pointHoverRadius: pointRadius + 2,
                 }
             ]
         },
@@ -756,6 +805,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             scales: {
+                x: {
+                    display: true,
+                    // Ensure x-axis displays even with single data point
+                    ticks: {
+                        autoSkip: false,
+                    }
+                },
                 y: {
                     type: 'linear',
                     display: true,
@@ -782,6 +838,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    console.log('Chart created successfully');
+    } catch (error) {
+        console.error('Chart creation failed:', error);
+        // Show error message to user
+        if (ctx && ctx.parentElement) {
+            ctx.parentElement.innerHTML = '<div class="p-4 text-red-600">Error loading chart: ' + error.message + '</div>';
+        }
+    }
     
     // Auto-refresh every 30 seconds
     setTimeout(function() {
