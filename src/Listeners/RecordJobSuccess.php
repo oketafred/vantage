@@ -32,13 +32,6 @@ class RecordJobSuccess
             return;
         }
 
-        if (method_exists($event->job, 'isDeletedOrReleased') && $event->job->isDeletedOrReleased()) {
-            VantageLogger::debug('Queue Monitor: Job was deleted or released, skipping processed record', [
-                'job_class' => $this->jobClass($event),
-            ]);
-            return;
-        }
-
         $uuid = $this->bestUuid($event);
         $jobClass = $this->jobClass($event);
         $queue = $event->job->getQueue();
