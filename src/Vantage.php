@@ -98,15 +98,95 @@ class Vantage
             return false;
         }
 
-        // Re-dispatch the job
-        if ($job->payload && isset($job->payload['data']['command'])) {
-            $command = unserialize($job->payload['data']['command']);
-            dispatch($command)->onQueue($job->queue);
+        // Get the expected job class from the stored job_class field
+        $expectedJobClass = $job->job_class;
 
-            return true;
+        if (! $expectedJobClass || ! is_string($expectedJobClass) || ! class_exists($expectedJobClass)) {
+            return false;
         }
 
-        return false;
+        // Validate it's a valid job class (implements ShouldQueue or extends Job)
+        if (! is_subclass_of($expectedJobClass, \Illuminate\Contracts\Queue\ShouldQueue::class) &&
+            ! is_subclass_of($expectedJobClass, \Illuminate\Queue\Jobs\Job::class)) {
+            return false;
+        }
+
+        // Try to restore job from payload with safety checks
+        /** @var string $expectedJobClass */
+        $command = $this->restoreJobFromPayload($job, $expectedJobClass);
+
+        if (! $command) {
+            // Only allow fallback if payload is completely missing (not corrupted/malicious)
+            // If payload exists but restoration failed, it's a security issue - don't fallback
+            if (! $job->payload) {
+                // Safe fallback: create new instance with empty constructor if payload unavailable
+                try {
+                    $command = new $expectedJobClass;
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            } else {
+                // Payload exists but restoration failed - this could be a security issue
+                // Don't fallback to prevent bypassing security checks
+                return false;
+            }
+        }
+
+        // Validate the restored command is of the expected class
+        if (! $command instanceof $expectedJobClass) {
+            return false;
+        }
+
+        dispatch($command)->onQueue($job->queue ?? 'default');
+
+        return true;
+    }
+
+    /**
+     * Safely restore job from payload with security checks.
+     */
+    protected function restoreJobFromPayload(VantageJob $job, string $expectedJobClass): ?object
+    {
+        if (! $job->payload) {
+            return null;
+        }
+
+        try {
+            $payload = is_array($job->payload) ? $job->payload : json_decode($job->payload, true);
+
+            if (! is_array($payload)) {
+                return null;
+            }
+
+            // Try new format first (from PayloadExtractor)
+            $serialized = $payload['raw_payload']['data']['command'] ?? null;
+
+            // Fallback to old format
+            if (! $serialized) {
+                $serialized = $payload['data']['command'] ?? null;
+            }
+
+            if (! $serialized || ! is_string($serialized)) {
+                return null;
+            }
+
+            // Unserialize with allowed_classes restriction - only allow the expected class
+            $command = @unserialize($serialized, ['allowed_classes' => [$expectedJobClass]]);
+
+            // Validate the result
+            if (! is_object($command)) {
+                return null;
+            }
+
+            // Double-check the class matches
+            if (! $command instanceof $expectedJobClass) {
+                return null;
+            }
+
+            return $command;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**

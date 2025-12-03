@@ -5,7 +5,9 @@ namespace HoudaSlassi\Vantage\Http\Controllers;
 use HoudaSlassi\Vantage\Models\VantageJob;
 use HoudaSlassi\Vantage\Support\QueueDepthChecker;
 use HoudaSlassi\Vantage\Support\VantageLogger;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Jobs\Job;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -498,8 +500,15 @@ class QueueMonitorController extends Controller
         }
 
         try {
-            // Simple: Just unserialize the original job from Laravel's payload
-            $job = $this->restoreJobFromPayload($run);
+            // Validate it's a valid job class before attempting to restore
+            if (! is_string($jobClass) ||
+                (! is_subclass_of($jobClass, ShouldQueue::class) &&
+                 ! is_subclass_of($jobClass, Job::class))) {
+                return back()->with('error', "Invalid job class: {$jobClass}");
+            }
+
+            // Safely restore job from payload with security checks
+            $job = $this->restoreJobFromPayload($run, $jobClass);
 
             if (! $job) {
                 return back()->with('error', 'Unable to restore job. Payload might be missing or corrupted.');
@@ -526,34 +535,69 @@ class QueueMonitorController extends Controller
     }
 
     /**
-     * Restore job from the original Laravel serialized payload
-     * This is the simplest and most accurate method
+     * Safely restore job from payload with security checks.
+     *
+     * @param  VantageJob  $run  The job run record
+     * @param  string  $expectedJobClass  The expected job class name for validation
+     * @return object|null The restored job object or null on failure
      */
-    protected function restoreJobFromPayload(VantageJob $run): ?object
+    protected function restoreJobFromPayload(VantageJob $run, string $expectedJobClass): ?object
     {
         if (! $run->payload) {
             return null;
         }
 
+        // Validate expected class exists and is a valid job class
+        if (! class_exists($expectedJobClass)) {
+            VantageLogger::warning('Vantage: Expected job class does not exist', [
+                'run_id' => $run->id,
+                'expected_class' => $expectedJobClass,
+            ]);
+
+            return null;
+        }
+
         try {
-            $payload = json_decode($run->payload, true);
+            $payload = is_array($run->payload) ? $run->payload : json_decode($run->payload, true);
+
+            if (! is_array($payload)) {
+                VantageLogger::warning('Vantage: Invalid payload format', ['run_id' => $run->id]);
+
+                return null;
+            }
 
             // Get the serialized command from Laravel's raw payload
             $serialized = $payload['raw_payload']['data']['command'] ?? null;
 
+            // Fallback to old format if new format not available
             if (! $serialized) {
+                $serialized = $payload['data']['command'] ?? null;
+            }
+
+            if (! $serialized || ! is_string($serialized)) {
                 VantageLogger::warning('Vantage: No serialized command in payload', ['run_id' => $run->id]);
 
                 return null;
             }
 
-            // Unserialize it - Laravel stored it this way originally
-            $job = unserialize($serialized, ['allowed_classes' => true]);
+            // Unserialize with security: only allow the expected job class
+            $job = @unserialize($serialized, ['allowed_classes' => [$expectedJobClass]]);
 
             if (! is_object($job)) {
                 VantageLogger::warning('Vantage: Unserialize did not return object', [
                     'run_id' => $run->id,
                     'result_type' => gettype($job),
+                ]);
+
+                return null;
+            }
+
+            // Double-check the class matches the expected class (security validation)
+            if (! $job instanceof $expectedJobClass) {
+                VantageLogger::warning('Vantage: Unserialized job class does not match expected class', [
+                    'run_id' => $run->id,
+                    'expected_class' => $expectedJobClass,
+                    'actual_class' => get_class($job),
                 ]);
 
                 return null;
@@ -567,6 +611,11 @@ class QueueMonitorController extends Controller
             return $job;
 
         } catch (\Throwable $e) {
+            VantageLogger::error('Vantage: Exception while restoring job from payload', [
+                'run_id' => $run->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }

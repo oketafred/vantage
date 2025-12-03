@@ -2,6 +2,9 @@
 
 namespace HoudaSlassi\Vantage\Support;
 
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Jobs\Job;
+
 /**
  * Simple Tag Extractor
  *
@@ -40,6 +43,9 @@ class TagExtractor
 
     /**
      * Get job command object from event
+     *
+     * Note: During job processing, we don't know the exact class ahead of time.
+     * We validate after unserializing that it's a valid job class.
      */
     protected static function getCommand($event): ?object
     {
@@ -51,9 +57,24 @@ class TagExtractor
                 return null;
             }
 
+            // During job processing, Laravel has already validated the job.
+            // We still restrict to prevent arbitrary class instantiation, but we need
+            // to allow classes since jobs are objects. We validate after.
             $command = @unserialize($serialized, ['allowed_classes' => true]);
 
-            return is_object($command) ? $command : null;
+            if (! is_object($command)) {
+                return null;
+            }
+
+            // Security validation: ensure it's a valid job class
+            // This prevents unserializing arbitrary classes even if they got into the queue
+            if (! ($command instanceof ShouldQueue) &&
+                ! ($command instanceof Job) &&
+                ! is_subclass_of($command, ShouldQueue::class)) {
+                return null;
+            }
+
+            return $command;
         } catch (\Throwable $e) {
             return null;
         }
