@@ -3,13 +3,13 @@
 namespace HoudaSlassi\Vantage\Listeners;
 
 use HoudaSlassi\Vantage\Models\VantageJob;
+use HoudaSlassi\Vantage\Models\VantageJob;
 use HoudaSlassi\Vantage\Support\JobPerformanceContext;
 use HoudaSlassi\Vantage\Support\PayloadExtractor;
 use HoudaSlassi\Vantage\Support\TagExtractor;
 use HoudaSlassi\Vantage\Support\Traits\ExtractsRetryOf;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Str;
-use HoudaSlassi\Vantage\Models\VantageJob;
 
 class RecordJobStart
 {

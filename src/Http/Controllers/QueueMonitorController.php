@@ -594,22 +594,21 @@ class QueueMonitorController extends Controller
 
     /**
      * Get top tags using chunking to avoid memory issues
-     * 
-     * @param \Carbon\Carbon $since
-     * @param int $limit
+     *
+     * @param  \Carbon\Carbon  $since
      * @return \Illuminate\Support\Collection
      */
     protected function getTopTags($since, int $limit = 10)
     {
         $tagStats = [];
-        
+
         VantageJob::select(['job_tags', 'status'])
             ->where('created_at', '>', $since)
             ->whereNotNull('job_tags')
             ->chunk(1000, function ($jobs) use (&$tagStats) {
                 foreach ($jobs as $job) {
                     foreach ($job->job_tags ?? [] as $tag) {
-                        if (!isset($tagStats[$tag])) {
+                        if (! isset($tagStats[$tag])) {
                             $tagStats[$tag] = [
                                 'tag' => $tag,
                                 'total' => 0,
@@ -634,21 +633,20 @@ class QueueMonitorController extends Controller
 
     /**
      * Get tag statistics using chunking to avoid memory issues
-     * 
-     * @param \Carbon\Carbon $since
-     * @return array
+     *
+     * @param  \Carbon\Carbon  $since
      */
     protected function getTagStats($since): array
     {
         $tagStats = [];
-        
+
         VantageJob::select(['job_tags', 'status', 'duration_ms'])
             ->whereNotNull('job_tags')
             ->where('created_at', '>', $since)
             ->chunk(1000, function ($jobs) use (&$tagStats) {
                 foreach ($jobs as $job) {
                     foreach ($job->job_tags ?? [] as $tag) {
-                        if (!isset($tagStats[$tag])) {
+                        if (! isset($tagStats[$tag])) {
                             $tagStats[$tag] = [
                                 'total' => 0,
                                 'processed' => 0,
@@ -687,7 +685,7 @@ class QueueMonitorController extends Controller
         }
 
         // Sort by total count
-        uasort($tagStats, fn($a, $b) => $b['total'] <=> $a['total']);
+        uasort($tagStats, fn ($a, $b) => $b['total'] <=> $a['total']);
 
         return $tagStats;
     }
