@@ -2,13 +2,14 @@
 
 namespace HoudaSlassi\Vantage\Listeners;
 
-use HoudaSlassi\Vantage\Support\Traits\ExtractsRetryOf;
-use HoudaSlassi\Vantage\Support\TagExtractor;
-use HoudaSlassi\Vantage\Support\PayloadExtractor;
+use HoudaSlassi\Vantage\Models\VantageJob;
+use HoudaSlassi\Vantage\Models\VantageJob;
 use HoudaSlassi\Vantage\Support\JobPerformanceContext;
+use HoudaSlassi\Vantage\Support\PayloadExtractor;
+use HoudaSlassi\Vantage\Support\TagExtractor;
+use HoudaSlassi\Vantage\Support\Traits\ExtractsRetryOf;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Str;
-use HoudaSlassi\Vantage\Models\VantageJob;
 
 class RecordJobStart
 {
@@ -17,7 +18,7 @@ class RecordJobStart
     public function handle(JobProcessing $event): void
     {
         // Master switch: if package is disabled, don't track anything
-        if (!config('vantage.enabled', true)) {
+        if (! config('vantage.enabled', true)) {
             return;
         }
 
@@ -40,7 +41,7 @@ class RecordJobStart
                 $ru = @getrusage();
                 if (is_array($ru)) {
                     $userUs = ($ru['ru_utime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_utime.tv_usec'] ?? 0);
-                    $sysUs  = ($ru['ru_stime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_stime.tv_usec'] ?? 0);
+                    $sysUs = ($ru['ru_stime.tv_sec'] ?? 0) * 1_000_000 + ($ru['ru_stime.tv_usec'] ?? 0);
                     $cpuStart = ['user_us' => $userUs, 'sys_us' => $sysUs];
                 }
             }
@@ -62,16 +63,16 @@ class RecordJobStart
         // Always create a new record on job start
         // The UUID will be used by Success/Failure listeners to find and update this record
         VantageJob::create([
-            'uuid'             => $uuid,
-            'job_class'        => $jobClass,
-            'queue'            => $queue,
-            'connection'       => $connection,
-            'attempt'          => $event->job->attempts(),
-            'status'           => 'processing',
-            'started_at'       => now(),
-            'retried_from_id'  => $this->getRetryOf($event),
-            'payload'          => $payloadJson,
-            'job_tags'         => TagExtractor::extract($event),
+            'uuid' => $uuid,
+            'job_class' => $jobClass,
+            'queue' => $queue,
+            'connection' => $connection,
+            'attempt' => $event->job->attempts(),
+            'status' => 'processing',
+            'started_at' => now(),
+            'retried_from_id' => $this->getRetryOf($event),
+            'payload' => $payloadJson,
+            'job_tags' => TagExtractor::extract($event),
             // telemetry columns (nullable if disabled/unsampled)
             'memory_start_bytes' => $memoryStart,
             'memory_peak_start_bytes' => $memoryPeakStart,
@@ -109,4 +110,3 @@ class RecordJobStart
         return get_class($event->job);
     }
 }
-
