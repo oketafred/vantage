@@ -153,7 +153,7 @@ class RecordJobSuccess
         }
 
         // Last resort: generate new UUID
-        return (string) \Illuminate\Support\Str::uuid();
+        return (string) Str::uuid();
     }
 
 

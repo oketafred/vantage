@@ -3,6 +3,7 @@
 namespace HoudaSlassi\Vantage\Support\Traits;
 
 use HoudaSlassi\Vantage\Support\VantageLogger;
+use Illuminate\Support\Str;
 
 trait ExtractsRetryOf
 {
@@ -58,6 +59,6 @@ trait ExtractsRetryOf
             return (string) $event->job->getJobId();
         }
         // Otherwise we'll generate a UUID
-        return (string) \Illuminate\Support\Str::uuid();
+        return (string) Str::uuid();
     }
 }
